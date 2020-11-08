@@ -2,7 +2,7 @@
 title: "p8105_hw5_ajp2257"
 author: "Amy Pitts"
 date: "11/8/2020"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -15,12 +15,12 @@ This zip file contains data from a longitudinal study that included a control ar
 
 Create a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time:
 
-Start with a dataframe containing all file names; the list.files function will help
-Iterate over file names and read in data for each subject using purrr::map and saving the result as a new variable in the dataframe
-Tidy the result; manipulate file names to include control arm and subject ID, make sure weekly observations are “tidy”, and do any other tidying that’s necessary
-Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups.
+* Start with a dataframe containing all file names; the list.files function will help
+* Iterate over file names and read in data for each subject using purrr::map and saving the result as a new variable in the dataframe
+* Tidy the result; manipulate file names to include control arm and subject ID, make sure weekly observations are “tidy”, and do any other tidying that’s necessary
+* Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups.
 
-```{r}
+```{r message = FALSE}
 files = list.files("data", pattern = "*.csv") # get the file name 
 data  = files %>% # reading the data from each file 
   map(~ read_csv(file.path("data", .)))  %>%  # read in all the files
@@ -53,6 +53,111 @@ ggplot(data = participants_df, aes(x = week, y = value, group = id)) +
 ```
 
 In looks like in the control group the values seem to stay on the lower side never going above about 4. The experiment group starts with values on the lower side just like the control group but then the values increase over time. In the later weeks it looks like the control group and the experiment group are different with the experiment group having bigger values. 
+
+
+# Problem 3
+When designing an experiment or analysis, a common question is whether it is likely that a true effect will be detected – put differently, whether a false null hypothesis will be rejected. The probability that a false null hypothesis is rejected is referred to as power, and it depends on several factors, including: the sample size; the effect size; and the error variance. In this problem, you will conduct a simulation to explore power in a simple linear regression.
+
+First set the following design elements:
+
+* Fix $n=30$
+* Fix $\sigma=5$ 
+
+Set $\mu=0$. Generate 5000 datasets from the model 
+$$x \sim \textrm{Normal}[\mu, \sigma]$$
+For each dataset, save $\hat{\mu}$  and the p-value arising from a test of $H:\mu =0$ using $\alpha=0.05$. Hint: to obtain the estimate and p-value, use broom::tidy to clean the output of t.test.
+
+Repeat the above for $\mu=\{1,2,3,4,5,6\}$, and complete the following:
+
+* Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of $\mu$ on the x axis. Describe the association between effect size and power.
+* Make a plot showing the average estimate of $\hat{\mu}$  on the y axis and the true value of μ on the x axis. Make a second plot (or overlay on the first) the average estimate of $\hat{\mu}$  \textbf{only in samples for which the null was rejected} on the y axis and the true value of $\mu$ on the x axis. Is the sample average of $\hat{\mu}$  across tests for which the null is rejected approximately equal to the true value of $\mu$? Why or why not?
+
+```{r}
+set.seed(1)
+n = 30
+sigma = 5
+alpha = 0.05
+
+sim_est = function( mu ) {
+  sim_data = tibble(
+    x = rnorm(n, mean = mu, sd = sigma),
+  )
+
+  broom::tidy(t.test(sim_data, mu = mu)) %>% 
+    select(estimate, p.value)
+}
+
+```
+
+```{r}
+sim_results = 
+  tibble(mu = c(0:6)) %>% 
+  mutate(
+    output_lists = map(.x = mu, ~rerun(5000, sim_est(mu = .x))),
+    estimate_dfs = map(output_lists, bind_rows)) %>% 
+  select(-output_lists) %>% 
+  unnest(estimate_dfs)
+```
+
+Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of $\mu$ on the x axis. Describe the association between effect size and power.
+
+```{r}
+sim_results %>% 
+   mutate(
+    mu = str_c("mu = ", mu),
+    mu = fct_inorder(mu),
+    reject_status = ifelse(p.value > alpha, 0, 1) # reject null = 1
+    ) %>% 
+  group_by(mu) %>%
+  count(reject_status) %>%
+  filter(reject_status == 1) %>% 
+   ggplot(aes(x = mu, y = n/5000)) + 
+    geom_col(aes(fill=mu)) +
+    geom_hline(yintercept=0.05, linetype="dashed", size=1) +
+    labs(
+      title = "The Proportion of times null was rejected with different Means",
+      y = "Proportion of times null was rejected"
+    )
+```
+
+Make a plot showing the average estimate of $\hat{\mu}$  on the y axis and the true value of μ on the x axis.
+```{r}
+sim_results %>% 
+   mutate(
+    mu = str_c("mu = ", mu),
+    mu = fct_inorder(mu),
+    ) %>% 
+  group_by(mu) %>%
+  summarize(mean_est = mean(estimate)) %>%
+    ggplot(aes(x = mu, y = mean_est)) + 
+    geom_point(aes(color=mu)) +
+    labs(
+      title = "Mean Estimates compared to true Mu",
+      y = "Mean of the Estimates"
+    )
+```
+
+
+
+Make a second plot (or overlay on the first) the average estimate of $\hat{\mu}$  \textbf{only in samples for which the null was rejected} on the y axis and the true value of $\mu$ on the x axis.
+```{r}
+sim_results %>% 
+   mutate(
+    mu = str_c("mu = ", mu),
+    mu = fct_inorder(mu),
+    reject_status = ifelse(p.value > alpha, 0, 1) # reject null = 1
+    ) %>% 
+  group_by(mu, reject_status) %>%
+  summarize(mean_est = mean(estimate)) %>%
+  filter(reject_status == 1) %>%
+    ggplot(aes(x = mu, y = mean_est)) +
+    geom_point(aes(color=mu)) +
+    labs(
+      title = "Mean Estimates compared to true Mu of only the rejections",
+      y = "Mean of the Estimates"
+    )
+```
+
 
 
 
