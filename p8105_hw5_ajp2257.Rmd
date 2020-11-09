@@ -8,6 +8,7 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(patchwork)
 ```
 
 # Problem 2
@@ -73,27 +74,30 @@ Repeat the above for $\mu=\{1,2,3,4,5,6\}$, and complete the following:
 * Make a plot showing the average estimate of $\hat{\mu}$  on the y axis and the true value of μ on the x axis. Make a second plot (or overlay on the first) the average estimate of $\hat{\mu}$  \textbf{only in samples for which the null was rejected} on the y axis and the true value of $\mu$ on the x axis. Is the sample average of $\hat{\mu}$  across tests for which the null is rejected approximately equal to the true value of $\mu$? Why or why not?
 
 ```{r}
-set.seed(1)
-n = 30
-sigma = 5
-alpha = 0.05
+set.seed(1) # for reproducability 
+# setting up variables given in the directions
+n     = 30   # size of the random sample 
+sigma = 5    # the variance 
+alpha = 0.05 # the error threshold 
 
+# generating the data and running a t-test to get the simulation estimates 
 sim_est = function( mu ) {
-  sim_data = tibble(
-    x = rnorm(n, mean = mu, sd = sigma),
+  sim_data = tibble( # storing the data in the tibble 
+    x = rnorm(n, mean = mu, sd = sigma), # this is the simulated data 
   )
-
-  broom::tidy(t.test(sim_data, mu = mu)) %>% 
-    select(estimate, p.value)
+  # doing the t.test and getting the results
+  broom::tidy(t.test(sim_data, mu = mu)) %>% # comparing sample against the true mu 
+    select(estimate, p.value) # getting the estimate and the p-value 
 }
 
 ```
 
 ```{r}
+# running the simulation 5000 times and for each mu value 
 sim_results = 
-  tibble(mu = c(0:6)) %>% 
-  mutate(
-    output_lists = map(.x = mu, ~rerun(5000, sim_est(mu = .x))),
+  tibble(mu = c(0:6)) %>%  # these are all the mus we want to try 
+  mutate( # running the simulation we made above with different mu values 
+    output_lists = map(.x = mu, ~rerun(5000, sim_est(mu = .x))), 
     estimate_dfs = map(output_lists, bind_rows)) %>% 
   select(-output_lists) %>% 
   unnest(estimate_dfs)
@@ -102,61 +106,76 @@ sim_results =
 Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of $\mu$ on the x axis. Describe the association between effect size and power.
 
 ```{r}
+# plot showing the proportion of times the null was rejected (the power of the test)
 sim_results %>% 
-   mutate(
+   mutate( # updating the mu variable to have it plot in a nice way 
     mu = str_c("mu = ", mu),
     mu = fct_inorder(mu),
-    reject_status = ifelse(p.value > alpha, 0, 1) # reject null = 1
+    reject_status = ifelse(p.value > alpha, 0, 1) # reject null = 1 based on alpha 
     ) %>% 
-  group_by(mu) %>%
+  group_by(mu) %>% # group by mu to count how many times we reject based on alpha 
   count(reject_status) %>%
-  filter(reject_status == 1) %>% 
-   ggplot(aes(x = mu, y = n/5000)) + 
+  filter(reject_status == 1) %>% # filter just the reject null (when = 1)
+   ggplot(aes(x = mu, y = n/5000)) + # I am dividing by 5000 to get the proportion 
     geom_col(aes(fill=mu)) +
     geom_hline(yintercept=0.05, linetype="dashed", size=1) +
+    geom_text(aes(label=round(n/5000, 3)), position = position_nudge(y = 0.002)) + 
     labs(
       title = "The Proportion of times null was rejected with different Means",
       y = "Proportion of times null was rejected"
     )
 ```
 
-Make a plot showing the average estimate of $\hat{\mu}$  on the y axis and the true value of μ on the x axis.
+Make a plot showing the average estimate of $\hat{\mu}$  on the y axis and the true value of μ on the x axis. Make a second plot (or overlay on the first) the average estimate of $\hat{\mu}$  \textbf{only in samples for which the null was rejected} on the y axis and the true value of $\mu$ on the x axis.
 ```{r}
-sim_results %>% 
-   mutate(
-    mu = str_c("mu = ", mu),
+# average estimates against the true mu value graph 
+mean_values = sim_results %>% 
+   mutate( # Changing the mu variable to make it better to graph 
+    mu = str_c("mu = ", mu), 
     mu = fct_inorder(mu),
     ) %>% 
-  group_by(mu) %>%
-  summarize(mean_est = mean(estimate)) %>%
+  group_by(mu) %>% # want to group the means by the mu values 
+  summarize(mean_est = mean(estimate)) %>% # getting the mean 
+    # now we are plotting 
     ggplot(aes(x = mu, y = mean_est)) + 
-    geom_point(aes(color=mu)) +
+    geom_point(aes(color=mu), size=4) +
+    geom_text(aes(label=round(mean_est, 3)), position = position_nudge(y = 0.4)) + 
     labs(
-      title = "Mean Estimates compared to true Mu",
-      y = "Mean of the Estimates"
-    )
-```
+      title = "Estimates vs Truth",
+      y = "Mean of the Estimates",
+      x = "True Mu"
+    ) + 
+   theme(legend.position = "none")
 
-
-
-Make a second plot (or overlay on the first) the average estimate of $\hat{\mu}$  \textbf{only in samples for which the null was rejected} on the y axis and the true value of $\mu$ on the x axis.
-```{r}
-sim_results %>% 
-   mutate(
+# just looking at the estimates for the times were rejected the null against the true mu
+resticted_means = sim_results %>% 
+   mutate( # Changing the mu variable to make it better to graph 
     mu = str_c("mu = ", mu),
     mu = fct_inorder(mu),
-    reject_status = ifelse(p.value > alpha, 0, 1) # reject null = 1
+    reject_status = ifelse(p.value > alpha, 0, 1) # reject null = 1 based on alpha 
     ) %>% 
-  group_by(mu, reject_status) %>%
-  summarize(mean_est = mean(estimate)) %>%
+  group_by(mu, reject_status) %>% # grouping by mu and the reject_status 
+  summarize(mean_est = mean(estimate)) %>% # sumarizing the results 
   filter(reject_status == 1) %>%
+    # plotting the results 
     ggplot(aes(x = mu, y = mean_est)) +
-    geom_point(aes(color=mu)) +
+    geom_point(aes(color=mu), size=4) +
+    geom_text(aes(label=round(mean_est, 3)), position = position_nudge(y = 0.4)) + 
     labs(
-      title = "Mean Estimates compared to true Mu of only the rejections",
-      y = "Mean of the Estimates"
-    )
+      title = "Estimates vs Truth of only the rejections",
+      y = "Mean of the Estimates",
+      x = "True Mu"
+    ) +
+   theme(legend.position = "none")
+
+# plotting them together 
+mean_values + resticted_means
 ```
+
+
+
+
+
 
 
 
