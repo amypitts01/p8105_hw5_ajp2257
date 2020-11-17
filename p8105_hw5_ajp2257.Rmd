@@ -1,7 +1,7 @@
 ---
 title: "p8105_hw5_ajp2257"
 author: "Amy Pitts"
-date: "11/8/2020"
+date: "11/19/2020"
 output: github_document
 ---
 
@@ -168,7 +168,7 @@ sim_results =
   unnest(estimate_dfs)
 ```
 
-Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of mu on the x axis. Describe the association between effect size and power.
+##### Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of mu on the x axis. Describe the association between effect size and power.
 
 ```{r}
 # plot showing the proportion of times the null was rejected (the power of the test)
@@ -193,7 +193,7 @@ sim_results %>%
 
 We see here that when mu=0 we get the lowest amount of times the null was rejected. That makes sense because we are running a hypothesis test seeing if the sample is close to having a population mu of 0. This is our alpha value or a false positive rate. When we increase the mu value then the number of times the null was rejected increases. When mu equal 5 and 6 then we are almost always rejecting the null hypothesis. 
 
-Make a plot showing the average estimate of hat{mu}  on the y axis and the true value of μ on the x axis. Make a second plot (or overlay on the first) the average estimate of hat{mu}  \textbf{only in samples for which the null was rejected} on the y axis and the true value of mu on the x axis.
+##### Make a plot showing the average estimate of hat{mu}  on the y axis and the true value of μ on the x axis. Make a second plot (or overlay on the first) the average estimate of hat{mu}  \textbf{only in samples for which the null was rejected} on the y axis and the true value of mu on the x axis.
 ```{r}
 # average estimates against the true mu value graph 
 mean_values = sim_results %>% 
