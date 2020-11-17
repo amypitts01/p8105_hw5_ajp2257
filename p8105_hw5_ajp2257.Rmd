@@ -106,9 +106,12 @@ Plotting time!
 
 ```{r}
 # looking at spagetti plot over time (in weeks) by the two different arms 
-ggplot(data = participants_df, aes(x = week, y = value, group = id)) + 
-  geom_line(aes(color=id)) + # coloring the participants id 
-  facet_grid(. ~ arm) +      # splitting the graph by arm
+participants_df %>%
+  mutate(
+    uniq = str_c(arm , id, sep="_") #making a unique identifier for each person 
+  ) %>%
+ggplot( aes(x = week, y = value, group = uniq)) + 
+  geom_line(aes(color=arm)) + # coloring the participants by arms
   labs(
     title = "A Spaghetti plot showing each participant over time (weeks) by group."
   )
@@ -122,17 +125,15 @@ When designing an experiment or analysis, a common question is whether it is lik
 
 First set the following design elements:
 
-* Fix $n=30$
-* Fix $\sigma=5$ 
+* Fix n=30
+* Fix sigma=5
 
-Set $\mu=0$. Generate 5000 datasets from the model 
-$$x \sim \textrm{Normal}[\mu, \sigma]$$
-For each dataset, save $\hat{\mu}$  and the p-value arising from a test of $H:\mu =0$ using $\alpha=0.05$. Hint: to obtain the estimate and p-value, use broom::tidy to clean the output of t.test.
+Set mu=0. Generate 5000 datasets from the model x ~ Normal[mu, sigma]. For each dataset, save mu hat  and the p-value arising from a test of H:mu =0 using alpha=0.05. Hint: to obtain the estimate and p-value, use broom::tidy to clean the output of t.test.
 
-Repeat the above for $\mu=\{1,2,3,4,5,6\}$, and complete the following:
+Repeat the above for mu={1,2,3,4,5,6}, and complete the following:
 
-* Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of $\mu$ on the x axis. Describe the association between effect size and power.
-* Make a plot showing the average estimate of $\hat{\mu}$  on the y axis and the true value of μ on the x axis. Make a second plot (or overlay on the first) the average estimate of $\hat{\mu}$  \textbf{only in samples for which the null was rejected} on the y axis and the true value of $\mu$ on the x axis. Is the sample average of $\hat{\mu}$  across tests for which the null is rejected approximately equal to the true value of $\mu$? Why or why not?
+* Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of mu on the x axis. Describe the association between effect size and power.
+* Make a plot showing the average estimate of hat{mu}  on the y axis and the true value of μ on the x axis. Make a second plot (or overlay on the first) the average estimate of hat{mu}  \textbf{only in samples for which the null was rejected} on the y axis and the true value of mu on the x axis. Is the sample average of hat{mu} across tests for which the null is rejected approximately equal to the true value of mu? Why or why not?
 
 The is setting up the data generation 
 ```{r}
@@ -167,7 +168,7 @@ sim_results =
   unnest(estimate_dfs)
 ```
 
-Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of $\mu$ on the x axis. Describe the association between effect size and power.
+Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of mu on the x axis. Describe the association between effect size and power.
 
 ```{r}
 # plot showing the proportion of times the null was rejected (the power of the test)
@@ -189,9 +190,10 @@ sim_results %>%
       y = "Proportion of times null was rejected"
     )
 ```
-We see here that when $\mu=0$ we get the lowest amount of times the null was rejected. That makes sense because we are running a hypothesis test seeing if the sample is close to having a population mu of 0. This is our alpha value or a false positive rate. When we increase the mu value then the number of times the null was rejected increases. When mu equal 5 and 6 then we are almost always rejecting the null hypothesis. 
 
-Make a plot showing the average estimate of $\hat{\mu}$  on the y axis and the true value of μ on the x axis. Make a second plot (or overlay on the first) the average estimate of $\hat{\mu}$  \textbf{only in samples for which the null was rejected} on the y axis and the true value of $\mu$ on the x axis.
+We see here that when mu=0 we get the lowest amount of times the null was rejected. That makes sense because we are running a hypothesis test seeing if the sample is close to having a population mu of 0. This is our alpha value or a false positive rate. When we increase the mu value then the number of times the null was rejected increases. When mu equal 5 and 6 then we are almost always rejecting the null hypothesis. 
+
+Make a plot showing the average estimate of hat{mu}  on the y axis and the true value of μ on the x axis. Make a second plot (or overlay on the first) the average estimate of hat{mu}  \textbf{only in samples for which the null was rejected} on the y axis and the true value of mu on the x axis.
 ```{r}
 # average estimates against the true mu value graph 
 mean_values = sim_results %>% 
